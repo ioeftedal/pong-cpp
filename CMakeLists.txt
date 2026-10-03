@@ -29,6 +29,28 @@ find_library(
 
 add_executable(run src/main.cpp)
 
+# nix's cc-wrapper injects every buildInputs include dir into each compile via
+# NIX_CFLAGS_COMPILE, so the compiler reports them as implicit and CMake stores
+# them in CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES. CMake then treats the matching
+# target_include_directories entries as redundant and omits them from the
+# compile rule, leaving CXX_INCLUDES empty. The build still works (the wrapper
+# re-adds the flags from the environment), but compile_commands.json no longer
+# records them, and clangd/clang-tidy read only that file -- so "raylib.h" is
+# not found and every raylib symbol and constant is reported as undeclared.
+# Re-emit the nix include dirs as explicit flags so they land in the compilation
+# database. The paths are read from the compiler itself rather than hardcoded,
+# so they follow the flake when it updates. SHELL: is required: without it CMake
+# collapses the repeated -isystem flags into one flag followed by bare paths,
+# which clang would then treat as input files.
+set(RAYLIB_NIX_SYSTEM_INCLUDES "")
+foreach(RAYLIB_NIX_INCLUDE_DIR IN LISTS CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES)
+  if(RAYLIB_NIX_INCLUDE_DIR MATCHES "^/nix/store/")
+    list(APPEND RAYLIB_NIX_SYSTEM_INCLUDES
+         "SHELL:-isystem ${RAYLIB_NIX_INCLUDE_DIR}")
+  endif()
+endforeach()
+target_compile_options(run PRIVATE ${RAYLIB_NIX_SYSTEM_INCLUDES})
+
 target_include_directories(run PRIVATE "${RAYLIB_INCLUDE_DIR}")
 target_link_libraries(run PRIVATE "${RAYLIB_LIBRARY}")
 
