@@ -11,3 +11,6 @@ flake.lock
 **/.nixos-test-history
 
 /build
+
+# Logging
+logfile.txt
