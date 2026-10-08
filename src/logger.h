@@ -4,7 +4,6 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
-using namespace std;
 
 // Enum to represent log levels
 enum LogLevel { DEBUG, INFO, WARNING, ERROR, CRITICAL };
@@ -12,10 +11,11 @@ enum LogLevel { DEBUG, INFO, WARNING, ERROR, CRITICAL };
 class Logger {
  public:
   // Constructor: Opens the log file in append mode
-  Logger(const string& filename) {
-    logFile.open(filename, ios::app);
+  Logger(const std::string& filename, LogLevel minLevel = WARNING)
+      : minLevel(minLevel) {
+    logFile.open(filename, std::ios::app);
     if (!logFile.is_open()) {
-      cerr << "Error opening log file." << endl;
+      std::cerr << "Error opening log file." << std::endl;
     }
   }
 
@@ -23,7 +23,10 @@ class Logger {
   ~Logger() { logFile.close(); }
 
   // Logs a message with a given log level
-  void log(LogLevel level, const string& message) {
+  void log(LogLevel level, const std::string& message) {
+    if (level < minLevel) {
+      return;
+    };
     // Get current timestamp
     time_t now = time(0);
     tm* timeinfo = localtime(&now);
@@ -31,12 +34,12 @@ class Logger {
     strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", timeinfo);
 
     // Create log entry
-    ostringstream logEntry;
+    std::ostringstream logEntry;
     logEntry << "[" << timestamp << "] " << levelToString(level) << ": "
-             << message << endl;
+             << message << std::endl;
 
     // Output to console
-    cout << logEntry.str();
+    std::cout << logEntry.str();
 
     // Output to log file
     if (logFile.is_open()) {
@@ -46,10 +49,11 @@ class Logger {
   }
 
  private:
-  ofstream logFile;  // File stream for the log file
+  std::ofstream logFile;  // File stream for the log file
+  LogLevel minLevel;
 
   // Converts log level to a string for output
-  string levelToString(LogLevel level) {
+  std::string levelToString(LogLevel level) {
     switch (level) {
       case DEBUG:
         return "DEBUG";

@@ -71,10 +71,12 @@ static void drawCenteredText(const char* text, int y, int fontSize,
 }
 
 int main(void) {
-  Logger logger("logfile.txt");  // Create logger instance
+  Logger logger("logfile.txt", WARNING);  // Create logger instance
   logger.log(INFO, "Program started.");
   const int windowWidth = 800;
   const int windowHeight = 600;
+  logger.log(DEBUG, "Window Height: " + std::to_string(windowWidth));
+  logger.log(DEBUG, "Window Height: " + std::to_string(windowHeight));
 
   constexpr int margin = 40;
   constexpr int paddleWidth = 20;
@@ -182,6 +184,7 @@ int main(void) {
   };
 
   CloseWindow();
+  logger.log(INFO, "Program exited.");
 
   return 0;
 }
