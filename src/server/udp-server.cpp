@@ -29,11 +29,17 @@ int main() {
     std::cout << errorCode << " : " << errorMessage << std::endl;
   });
 
+  // // You should do an input loop, so the program won't terminate immediately
+  // std::string input;
+  // getline(std::cin, input);
+  // while (input != "exit") {
+  //   getline(std::cin, input);
+  // }
+
   // You should do an input loop, so the program won't terminate immediately
-  std::string input;
-  getline(std::cin, input);
-  while (input != "exit") {
-    getline(std::cin, input);
+  char input = getchar();
+  while (input != '0') {
+    input = getchar();
   }
 
   udpServer.Close();
