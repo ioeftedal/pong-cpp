@@ -1,3 +1,4 @@
+#include <termios.h>
 #include <iostream>
 #include <string>
 #include "udpsocket.hpp"
@@ -22,13 +23,26 @@ int main() {
               << ")" << std::endl;
   };
 
-  // You should do an input loop, so the program won't terminate immediately
-  std::string input;
-  getline(std::cin, input);
-  while (input != "exit") {
-    udpSocket.Send(input);
-    getline(std::cin, input);
+  // use termios to send bytes immediately
+  // (not wait for enter)
+  struct termios oldt, newt;
+  // save current terminal setting
+  tcgetattr(STDIN_FILENO, &oldt);
+  newt = oldt;
+  // disable canonical mode
+  newt.c_lflag &= ~(ICANON | ECHO);
+  // apply new setting
+  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+
+  // input loop, so the program won't terminate immediately
+  char input = getchar();
+  while (input != '0') {
+    udpSocket.Send(&input, 1);
+    input = getchar();
   }
+
+  // restore terminal settings
+  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
 
   // Close the socket.
   udpSocket.Close();
