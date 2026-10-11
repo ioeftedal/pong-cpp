@@ -115,8 +115,9 @@ int main(void) {
 
   udpSocket.onRawMessageReceived = [&](const char* message, int length,
                                        std::string ipv4, uint16_t port) {
-    std::cout << ipv4 << ":" << port << " => " << message << "(" << length
-              << ")" << std::endl;
+    logger.log(INFO, (ipv4) + ":" + std::to_string(port) + " => " +
+                         std::string(message, length) + "(" +
+                         std::to_string(length) + ")");
   };
 
   // TODO: There has to be 2 clients connected in order to start game

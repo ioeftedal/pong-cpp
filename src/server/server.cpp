@@ -92,17 +92,16 @@ int main(void) {
 
   Ball ball{windowWidth / 2, windowHeight / 2, 1, 1, ballSize, ballSize};
 
-  Logger logger("logfile.txt", INFO);  // Create logger instance
+  Logger logger("logfile.txt", DEBUG);  // Create logger instance
   logger.log(INFO, "Program started.");
-  logger.log(DEBUG, "Window Height: " + std::to_string(windowWidth));
-  logger.log(DEBUG, "Window Height: " + std::to_string(windowHeight));
 
   UDPServer<> udpServer;
 
   udpServer.onRawMessageReceived = [&](const char* message, int length,
                                        std::string ipv4, uint16_t port) {
-    std::cout << ipv4 << ":" << port << " => " << message << "(" << length
-              << ")" << std::endl;
+    logger.log(INFO, (ipv4) + ":" + std::to_string(port) + " => " +
+                         std::string(message, length) + "(" +
+                         std::to_string(length) + ")");
 
     // Echo to client:
     udpServer.SendTo(message, length, ipv4, port);
@@ -122,15 +121,13 @@ int main(void) {
     gamestate = GameState::Running;
   }
 
-  logger.log(INFO, "Program before getchar.");
-  // You should do an input loop, so the program won't terminate immediately
-  char input = getchar();
-  logger.log(INFO, "Program after getchar.");
-
   while (gamestate == GameState::Running) {
     logger.log(INFO, "While loop entered");
 
-    input = getchar();
+    logger.log(INFO, "Program before getchar.");
+    // You should do an input loop, so the program won't terminate immediately
+    char input = getchar();
+    logger.log(INFO, "Program after getchar.");
 
     if (scoreP1 == 10) {
       gamestate = GameState::Winner;
