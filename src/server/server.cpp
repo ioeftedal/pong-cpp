@@ -1,8 +1,27 @@
 #include <iostream>
 #include <string>
 #include "../logger.h"
-#include "raylib.h"
 #include "udpserver.hpp"
+
+Logger logger("logfile.txt", DEBUG);
+
+typedef struct Color {
+  unsigned char r, g, b, a;
+} Color;
+
+const int windowWidth = 800;
+const int windowHeight = 600;
+
+constexpr int margin = 40;
+constexpr int paddleWidth = 20;
+constexpr int paddleHeight = 50;
+constexpr int ballSize = 10;
+
+int scoreP1 = 0;
+int scoreP2 = 0;
+
+char player1Input = '\0';
+char player2Input = '\0';
 
 enum GameState { Running, Lobby, Winner };
 
@@ -25,8 +44,6 @@ struct Player {
   int height;
   int speed = 10;
 
-  void draw() const { DrawRectangle(xPos, yPos, width, height, WHITE); };
-
   Rect getRect() {
     return {
         xPos,
@@ -46,13 +63,11 @@ struct Ball {
   int height;
   int speed = 3;
 
-  void draw() const { DrawRectangle(xPos, yPos, width, height, WHITE); };
-
   void update() {
     if (yPos < 0) {
       yDir *= -1;
     };
-    if (yPos + height > GetScreenHeight()) {
+    if (yPos + height > windowHeight) {
       yDir *= -1;
     };
     yPos += yDir * speed;
@@ -70,18 +85,12 @@ struct Ball {
 };
 
 int main(void) {
+  logger.log(INFO, "Program started.");
+
+  logger.log(DEBUG, "Window Width: " + std::to_string(windowWidth));
+  logger.log(DEBUG, "Window Height: " + std::to_string(windowHeight));
+
   GameState gamestate = GameState::Lobby;
-
-  const int windowWidth = 800;
-  const int windowHeight = 600;
-
-  constexpr int margin = 40;
-  constexpr int paddleWidth = 20;
-  constexpr int paddleHeight = 50;
-  constexpr int ballSize = 10;
-
-  int scoreP1 = 0;
-  int scoreP2 = 0;
 
   const int paddleTop = (windowHeight - paddleHeight) / 2;
 
@@ -92,13 +101,25 @@ int main(void) {
 
   Ball ball{windowWidth / 2, windowHeight / 2, 1, 1, ballSize, ballSize};
 
-  Logger logger("logfile.txt", DEBUG);  // Create logger instance
-  logger.log(INFO, "Program started.");
-
   UDPServer<> udpServer;
 
   udpServer.onRawMessageReceived = [&](const char* message, int length,
                                        std::string ipv4, uint16_t port) {
+    if (length <= 0) {
+      player1Input = '\0';
+      player2Input = '\0';
+      return;
+    }
+
+    char input = message[0];
+
+    // // TODO: Identify the player by their registered client endpoint.
+    if (input == 'i' || input == 'k') {
+      player1Input = input;
+    } else if (input == 'e' || input == 'd') {
+      player2Input = input;
+    }
+
     logger.log(INFO, (ipv4) + ":" + std::to_string(port) + " => " +
                          std::string(message, length) + "(" +
                          std::to_string(length) + ")");
@@ -113,73 +134,68 @@ int main(void) {
     std::cout << errorCode << " : " << errorMessage << std::endl;
   });
 
-  logger.log(INFO, "Program after UDP.");
-
   // TODO: There has to be 2 clients connected in order to start game
-  int connected = 2;
+  int connected = 3;
   if (connected == 2) {
     gamestate = GameState::Running;
   }
 
   while (gamestate == GameState::Running) {
-    logger.log(INFO, "While loop entered");
-
-    logger.log(INFO, "Program before getchar.");
-    // You should do an input loop, so the program won't terminate immediately
-    char input = getchar();
-    logger.log(INFO, "Program after getchar.");
+    logger.log(DEBUG, "Gamestate: " + std::to_string(gamestate));
 
     if (scoreP1 == 10) {
       gamestate = GameState::Winner;
+      logger.log(INFO, "Player 1 is the winner");
       // TODO: This should be read off from upd client
-      if (IsKeyPressed(KEY_ENTER)) {
+      if (player1Input == 'p') {
         scoreP1 = 0;
         scoreP2 = 0;
-        ball.xPos = GetScreenWidth() / 2;
+        ball.xPos = windowWidth / 2;
         gamestate = GameState::Running;
       };
       continue;
     };
     if (scoreP2 == 10) {
       gamestate = GameState::Winner;
+      logger.log(INFO, "Player 2 is the winner");
       // TODO: This should be read off from upd client
-      if (IsKeyPressed(KEY_ENTER)) {
+      if (player2Input == 'p') {
         scoreP1 = 0;
         scoreP2 = 0;
-        ball.xPos = GetScreenWidth() / 2;
+        ball.xPos = windowWidth / 2;
         gamestate = GameState::Running;
       };
       continue;
     };
 
-    if (input == 'i') {
+    if (player1Input == 'i') {
       player1.yPos -= player1.speed;
     };
-    if (input == 'k') {
+    if (player1Input == 'k') {
       player1.yPos += player1.speed;
     };
-    if (input == 'e') {
+    if (player2Input == 'e') {
       player2.yPos -= player1.speed;
     };
-    if (input == 'd') {
+    if (player2Input == 'd') {
       player2.yPos += player1.speed;
     };
 
-    logger.log(INFO, std::to_string(player1.yPos));
-    logger.log(INFO, std::to_string(input));
-    std::cout << std::to_string(input);
+    logger.log(INFO, "Player 1 position: " + std::to_string(player1.yPos));
+    logger.log(INFO, "Player 2 position: " + std::to_string(player2.yPos));
 
+    // TODO: rewrite for not using ralib deps anymore
     if (player1.yPos < 0) {
       player1.yPos = 0;
     };
-    if (player1.yPos + player1.height > GetScreenHeight()) {
-      player1.yPos = GetScreenHeight() - player1.height;
+    if (player1.yPos + player1.height > windowHeight) {
+      player1.yPos = windowHeight - player1.height;
     };
     if (player2.yPos < 0) {
       player2.yPos = 0;
     };
-    if (player2.yPos + player2.height > GetScreenHeight()) {
-      player2.yPos = GetScreenHeight() - player2.height;
+    if (player2.yPos + player2.height > windowHeight) {
+      player2.yPos = windowHeight - player2.height;
     };
 
     if (ball.getRect().intersects(player1.getRect()) ||
@@ -188,13 +204,15 @@ int main(void) {
     };
     if (ball.xPos <= 0) {
       scoreP1 += 1;
-      ball.xPos = GetScreenWidth() / 2;
+      ball.xPos = windowWidth / 2;
     };
-    if (ball.xPos + ball.width >= GetScreenWidth()) {
+    if (ball.xPos + ball.width >= windowWidth) {
       scoreP2 += 1;
-      ball.xPos = GetScreenWidth() / 2;
+      ball.xPos = windowWidth / 2;
     };
     ball.update();
+    logger.log(DEBUG, "Ball X Position: " + std::to_string(ball.xPos));
+    logger.log(DEBUG, "Ball Y Position: " + std::to_string(ball.yPos));
   };
 
   udpServer.Close();
