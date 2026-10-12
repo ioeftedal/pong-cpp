@@ -1,7 +1,7 @@
 #include <chrono>
-#include <iostream>
 #include <string>
 #include <thread>
+#include <vector>
 #include "../logger.h"
 #include "udpserver.hpp"
 
@@ -26,6 +26,11 @@ char player1Input = '\0';
 char player2Input = '\0';
 
 enum GameState { Running, Lobby, Winner };
+
+struct Client {
+  std::string ipv4;
+  int port;
+};
 
 struct Rect {
   int x;
@@ -94,6 +99,9 @@ int main(void) {
 
   GameState gamestate = GameState::Lobby;
 
+  // TODO: change to array? more efficient?
+  std::vector<Client> udp_clients;
+
   const int paddleTop = (windowHeight - paddleHeight) / 2;
 
   Player player1 = {windowWidth - margin - paddleWidth, paddleTop, paddleWidth,
@@ -107,6 +115,17 @@ int main(void) {
 
   udpServer.onRawMessageReceived = [&](const char* message, int length,
                                        std::string ipv4, uint16_t port) {
+    Client udp_client = {ipv4, port};
+    bool unique_client = true;
+    for (Client client : udp_clients) {
+      if (udp_client.port == client.port && udp_client.ipv4 == client.ipv4) {
+        unique_client = false;
+      };
+    };
+    if (unique_client) {
+      udp_clients.push_back(udp_client);
+    }
+
     if (length <= 0) {
       player1Input = '\0';
       player2Input = '\0';
@@ -126,21 +145,22 @@ int main(void) {
                          std::string(message, length) + "(" +
                          std::to_string(length) + ")");
 
-    // Echo to client:
+    // TODO: send back more information.
+    // A struct?
+    // need to send player positions, scores, ball position and gamestate
     udpServer.SendTo(message, length, ipv4, port);
   };
 
   // Bind the server to a port.
   udpServer.Bind(8888, [](int errorCode, std::string errorMessage) {
-    // BINDING FAILED:
-    std::cout << errorCode << " : " << errorMessage << std::endl;
+    // BINDING FAILED
+    logger.log(ERROR, std::to_string(errorCode) + " : " + errorMessage + "\n");
   });
 
   // TODO: There has to be 2 clients connected in order to start game
-  int connected = 2;
-  if (connected == 2) {
-    gamestate = GameState::Running;
-  }
+  // if (udp_clients.size() == 2) {
+  gamestate = GameState::Running;
+  // }
 
   using Clock = std::chrono::steady_clock;
   constexpr auto frameDuration = std::chrono::nanoseconds(1'000'000'000 / 60);
@@ -148,6 +168,13 @@ int main(void) {
   while (gamestate == GameState::Running) {
     const auto frameStart = Clock::now();
     logger.log(DEBUG, "Gamestate: " + std::to_string(gamestate));
+
+    std::string udp_clients_msg = "UDP Clients: ";
+    for (const auto& client : udp_clients) {
+      udp_clients_msg +=
+          client.ipv4 + ":" + std::to_string(client.port) + "   ";
+    }
+    logger.log(INFO, udp_clients_msg);
 
     if (scoreP1 == 10) {
       gamestate = GameState::Winner;
@@ -187,8 +214,8 @@ int main(void) {
       player2.yPos += player1.speed;
     };
 
-    logger.log(INFO, "Player 1 position: " + std::to_string(player1.yPos));
-    logger.log(INFO, "Player 2 position: " + std::to_string(player2.yPos));
+    logger.log(DEBUG, "Player 1 position: " + std::to_string(player1.yPos));
+    logger.log(DEBUG, "Player 2 position: " + std::to_string(player2.yPos));
 
     // TODO: rewrite for not using ralib deps anymore
     if (player1.yPos < 0) {
