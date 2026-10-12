@@ -1,5 +1,7 @@
+#include <chrono>
 #include <iostream>
 #include <string>
+#include <thread>
 #include "../logger.h"
 #include "udpserver.hpp"
 
@@ -135,12 +137,16 @@ int main(void) {
   });
 
   // TODO: There has to be 2 clients connected in order to start game
-  int connected = 3;
+  int connected = 2;
   if (connected == 2) {
     gamestate = GameState::Running;
   }
 
+  using Clock = std::chrono::steady_clock;
+  constexpr auto frameDuration = std::chrono::nanoseconds(1'000'000'000 / 60);
+
   while (gamestate == GameState::Running) {
+    const auto frameStart = Clock::now();
     logger.log(DEBUG, "Gamestate: " + std::to_string(gamestate));
 
     if (scoreP1 == 10) {
@@ -213,6 +219,7 @@ int main(void) {
     ball.update();
     logger.log(DEBUG, "Ball X Position: " + std::to_string(ball.xPos));
     logger.log(DEBUG, "Ball Y Position: " + std::to_string(ball.yPos));
+    std::this_thread::sleep_until(frameStart + frameDuration);
   };
 
   udpServer.Close();
