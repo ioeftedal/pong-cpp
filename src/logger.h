@@ -39,7 +39,9 @@ class Logger {
              << message << std::endl;
 
     // Output to console
-    std::cout << logEntry.str();
+    std::cout << "[" << timestamp << "] " << colorForLevel(level)
+              << levelToString(level) << "\033[0m"
+              << ": " << message << std::endl;
 
     // Output to log file
     if (logFile.is_open()) {
@@ -51,6 +53,24 @@ class Logger {
  private:
   std::ofstream logFile;  // File stream for the log file
   LogLevel minLevel;
+
+  // Add colors to logging levels
+  const char* colorForLevel(LogLevel level) {
+    switch (level) {
+      case DEBUG:
+        return "\033[90m";  // Gray
+      case INFO:
+        return "\033[32m";  // Green
+      case WARNING:
+        return "\033[33m";  // Yellow
+      case ERROR:
+        return "\033[31m";  // Red
+      case CRITICAL:
+        return "\033[1;31m";  // Bold red
+      default:
+        return "\033[0m";  // Reset
+    }
+  }
 
   // Converts log level to a string for output
   std::string levelToString(LogLevel level) {
