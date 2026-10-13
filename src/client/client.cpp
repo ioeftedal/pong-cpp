@@ -1,11 +1,17 @@
-#include <iostream>
 #include "../logger.h"
 #include "raylib.h"
 
 #include <termios.h>
-#include <iostream>
 #include <string>
 #include "udpsocket.hpp"
+
+Logger logger("logfile.txt", INFO);
+
+const int windowWidth = 800;
+const int windowHeight = 600;
+
+int scoreP1 = 0;
+int scoreP2 = 0;
 
 enum GameState { Running, Lobby, Winner };
 
@@ -75,27 +81,6 @@ struct Ball {
 int main(void) {
   GameState gamestate = GameState::Lobby;
 
-  const int windowWidth = 800;
-  const int windowHeight = 600;
-
-  constexpr int margin = 40;
-  constexpr int paddleWidth = 20;
-  constexpr int paddleHeight = 50;
-  constexpr int ballSize = 10;
-
-  int scoreP1 = 0;
-  int scoreP2 = 0;
-
-  const int paddleTop = (windowHeight - paddleHeight) / 2;
-
-  Player player1 = {windowWidth - margin - paddleWidth, paddleTop, paddleWidth,
-                    paddleHeight};
-
-  Player player2 = {margin, paddleTop, paddleWidth, paddleHeight};
-
-  Ball ball{windowWidth / 2, windowHeight / 2, 1, 1, ballSize, ballSize};
-
-  Logger logger("logfile.txt", INFO);  // Create logger instance
   logger.log(INFO, "Program started.");
   logger.log(DEBUG, "Window Height: " + std::to_string(windowWidth));
   logger.log(DEBUG, "Window Height: " + std::to_string(windowHeight));
@@ -105,13 +90,10 @@ int main(void) {
   constexpr uint16_t PORT = 8888;
 
   // Initialize socket.
-  UDPSocket<100> udpSocket(
-      true);  // "true" to use Connection on UDP. Default is "false".
+  UDPSocket<100> udpSocket(true);
   udpSocket.Connect(IP, PORT);
 
-  // Send String:
   udpSocket.Send("Connection started");
-  //udpSocket.SendTo("ABCDEFGH", IP, PORT); // If you want to connectless
 
   udpSocket.onRawMessageReceived = [&](const char* message, int length,
                                        std::string ipv4, uint16_t port) {
@@ -119,12 +101,6 @@ int main(void) {
                          std::string(message, length) + "(" +
                          std::to_string(length) + ")");
   };
-
-  // TODO: There has to be 2 clients connected in order to start game
-  int connected = 2;
-  if (connected == 2) {
-    gamestate = GameState::Running;
-  }
 
   // use termios to send bytes immediately
   // (not wait for enter)
@@ -142,70 +118,6 @@ int main(void) {
   while (gamestate == GameState::Running) {
     udpSocket.Send(&input, 1);
     input = getchar();
-
-    if (scoreP1 == 10) {
-      // gamestate = GameState::Winner;
-      // TODO: This should be read off from upd client
-      if (IsKeyPressed(KEY_ENTER)) {
-        scoreP1 = 0;
-        scoreP2 = 0;
-        ball.xPos = GetScreenWidth() / 2;
-        gamestate = GameState::Running;
-      };
-      continue;
-    };
-    if (scoreP2 == 10) {
-      // gamestate = GameState::Winner;
-      // TODO: This should be read off from upd client
-      if (IsKeyPressed(KEY_ENTER)) {
-        scoreP1 = 0;
-        scoreP2 = 0;
-        ball.xPos = GetScreenWidth() / 2;
-        gamestate = GameState::Running;
-      };
-      continue;
-    };
-
-    // TODO: This should be read off from upd client
-    // if (IsKeyDown(KEY_UP)) {
-    //   player1.yPos -= player1.speed;
-    // };
-    // if (IsKeyDown(KEY_DOWN)) {
-    //   player1.yPos += player1.speed;
-    // };
-    // if (IsKeyDown(KEY_W)) {
-    //   player2.yPos -= player1.speed;
-    // };
-    // if (IsKeyDown(KEY_S)) {
-    //   player2.yPos += player1.speed;
-    // };
-
-    if (player1.yPos < 0) {
-      player1.yPos = 0;
-    };
-    if (player1.yPos + player1.height > GetScreenHeight()) {
-      player1.yPos = GetScreenHeight() - player1.height;
-    };
-    if (player2.yPos < 0) {
-      player2.yPos = 0;
-    };
-    if (player2.yPos + player2.height > GetScreenHeight()) {
-      player2.yPos = GetScreenHeight() - player2.height;
-    };
-
-    if (ball.getRect().intersects(player1.getRect()) ||
-        ball.getRect().intersects(player2.getRect())) {
-      ball.xDir *= -1;
-    };
-    if (ball.xPos <= 0) {
-      scoreP1 += 1;
-      ball.xPos = GetScreenWidth() / 2;
-    };
-    if (ball.xPos + ball.width >= GetScreenWidth()) {
-      scoreP2 += 1;
-      ball.xPos = GetScreenWidth() / 2;
-    };
-    ball.update();
   };
 
   // restore terminal settings

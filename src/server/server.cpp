@@ -1,15 +1,10 @@
 #include <chrono>
-#include <string>
 #include <thread>
 #include <vector>
 #include "../logger.h"
 #include "udpserver.hpp"
 
 Logger logger("logfile.txt", DEBUG);
-
-typedef struct Color {
-  unsigned char r, g, b, a;
-} Color;
 
 const int windowWidth = 800;
 const int windowHeight = 600;
@@ -94,12 +89,10 @@ struct Ball {
 int main(void) {
   logger.log(INFO, "Program started.");
 
-  logger.log(DEBUG, "Window Width: " + std::to_string(windowWidth));
-  logger.log(DEBUG, "Window Height: " + std::to_string(windowHeight));
-
+  // Initial gamestate
   GameState gamestate = GameState::Lobby;
 
-  // TODO: change to array? more efficient?
+  // Collection of clients that has connected to the server
   std::vector<Client> udp_clients;
 
   const int paddleTop = (windowHeight - paddleHeight) / 2;
@@ -111,10 +104,13 @@ int main(void) {
 
   Ball ball{windowWidth / 2, windowHeight / 2, 1, 1, ballSize, ballSize};
 
+  // Initialise udp server
   UDPServer<> udpServer;
 
+  // Whenever a message is recieved
   udpServer.onRawMessageReceived = [&](const char* message, int length,
                                        std::string ipv4, uint16_t port) {
+    // add a client to vector if client is not already in vector
     Client udp_client = {ipv4, port};
     bool unique_client = true;
     for (Client client : udp_clients) {
@@ -126,21 +122,22 @@ int main(void) {
       udp_clients.push_back(udp_client);
     }
 
+    // if message from client not empty, set it as player input
     if (length <= 0) {
       player1Input = '\0';
       player2Input = '\0';
       return;
     }
-
     char input = message[0];
 
-    // // TODO: Identify the player by their registered client endpoint.
+    // TODO: Identify the player by their registered client endpoint.
     if (input == 'i' || input == 'k') {
       player1Input = input;
     } else if (input == 'e' || input == 'd') {
       player2Input = input;
     }
 
+    // Log message and info
     logger.log(INFO, (ipv4) + ":" + std::to_string(port) + " => " +
                          std::string(message, length) + "(" +
                          std::to_string(length) + ")");
@@ -153,102 +150,102 @@ int main(void) {
 
   // Bind the server to a port.
   udpServer.Bind(8888, [](int errorCode, std::string errorMessage) {
-    // BINDING FAILED
     logger.log(ERROR, std::to_string(errorCode) + " : " + errorMessage + "\n");
   });
 
-  // TODO: There has to be 2 clients connected in order to start game
-  // if (udp_clients.size() == 2) {
-  gamestate = GameState::Running;
-  // }
-
+  // cap at 60 fps
   using Clock = std::chrono::steady_clock;
   constexpr auto frameDuration = std::chrono::nanoseconds(1'000'000'000 / 60);
 
-  while (gamestate == GameState::Running) {
-    const auto frameStart = Clock::now();
-    logger.log(DEBUG, "Gamestate: " + std::to_string(gamestate));
+  // main game loop
+  while (true) {
+    switch (gamestate) {
+      case Running: {
+        const auto frameStart = Clock::now();
 
-    std::string udp_clients_msg = "UDP Clients: ";
-    for (const auto& client : udp_clients) {
-      udp_clients_msg +=
-          client.ipv4 + ":" + std::to_string(client.port) + "   ";
-    }
-    logger.log(INFO, udp_clients_msg);
+        std::string udp_clients_info = "UDP Clients: ";
+        for (const auto& client : udp_clients) {
+          udp_clients_info +=
+              client.ipv4 + ":" + std::to_string(client.port) + "   ";
+        }
+        logger.log(INFO, udp_clients_info);
 
-    if (scoreP1 == 10) {
-      gamestate = GameState::Winner;
-      logger.log(INFO, "Player 1 is the winner");
-      // TODO: This should be read off from upd client
-      if (player1Input == 'p') {
-        scoreP1 = 0;
-        scoreP2 = 0;
-        ball.xPos = windowWidth / 2;
-        gamestate = GameState::Running;
-      };
-      continue;
-    };
-    if (scoreP2 == 10) {
-      gamestate = GameState::Winner;
-      logger.log(INFO, "Player 2 is the winner");
-      // TODO: This should be read off from upd client
-      if (player2Input == 'p') {
-        scoreP1 = 0;
-        scoreP2 = 0;
-        ball.xPos = windowWidth / 2;
-        gamestate = GameState::Running;
-      };
-      continue;
-    };
+        // Winner logic
+        if (scoreP1 == 10) {
+          gamestate = GameState::Winner;
+          logger.log(DEBUG, "Player 1 is the winner.");
+        };
+        if (scoreP2 == 10) {
+          gamestate = GameState::Winner;
+          logger.log(DEBUG, "Player 2 is the winner.");
+        };
 
-    if (player1Input == 'i') {
-      player1.yPos -= player1.speed;
-    };
-    if (player1Input == 'k') {
-      player1.yPos += player1.speed;
-    };
-    if (player2Input == 'e') {
-      player2.yPos -= player1.speed;
-    };
-    if (player2Input == 'd') {
-      player2.yPos += player1.speed;
-    };
+        // Movement of player logic
+        if (player1Input == 'i') {
+          player1.yPos -= player1.speed;
+        };
+        if (player1Input == 'k') {
+          player1.yPos += player1.speed;
+        };
+        if (player2Input == 'e') {
+          player2.yPos -= player1.speed;
+        };
+        if (player2Input == 'd') {
+          player2.yPos += player1.speed;
+        };
+        // lock player at top and bottom of screen
+        if (player1.yPos < 0) {
+          player1.yPos = 0;
+        };
+        if (player1.yPos + player1.height > windowHeight) {
+          player1.yPos = windowHeight - player1.height;
+        };
+        if (player2.yPos < 0) {
+          player2.yPos = 0;
+        };
+        if (player2.yPos + player2.height > windowHeight) {
+          player2.yPos = windowHeight - player2.height;
+        };
+        logger.log(DEBUG, "Player 1 position: " + std::to_string(player1.yPos));
+        logger.log(DEBUG, "Player 2 position: " + std::to_string(player2.yPos));
 
-    logger.log(DEBUG, "Player 1 position: " + std::to_string(player1.yPos));
-    logger.log(DEBUG, "Player 2 position: " + std::to_string(player2.yPos));
+        // Ball movement logic
+        if (ball.getRect().intersects(player1.getRect()) ||
+            ball.getRect().intersects(player2.getRect())) {
+          ball.xDir *= -1;
+        };
+        if (ball.xPos <= 0) {
+          scoreP1 += 1;
+          ball.xPos = windowWidth / 2;
+        };
+        if (ball.xPos + ball.width >= windowWidth) {
+          scoreP2 += 1;
+          ball.xPos = windowWidth / 2;
+        };
+        ball.update();
+        logger.log(DEBUG, "Ball X Position: " + std::to_string(ball.xPos));
+        logger.log(DEBUG, "Ball Y Position: " + std::to_string(ball.yPos));
 
-    // TODO: rewrite for not using ralib deps anymore
-    if (player1.yPos < 0) {
-      player1.yPos = 0;
+        std::this_thread::sleep_until(frameStart + frameDuration);
+        break;
+      }
+      case Lobby:
+        // TODO: make this async
+        logger.log(DEBUG, "Entered Lobby");
+        if (udp_clients.size() >= 2) {
+          gamestate = Running;
+        }
+        break;
+      case Winner:
+        if (player1Input == 'p' || player2Input == 'p') {
+          scoreP1 = 0;
+          scoreP2 = 0;
+          ball.xPos = windowWidth / 2;
+          gamestate = GameState::Running;
+        };
+        break;
     };
-    if (player1.yPos + player1.height > windowHeight) {
-      player1.yPos = windowHeight - player1.height;
-    };
-    if (player2.yPos < 0) {
-      player2.yPos = 0;
-    };
-    if (player2.yPos + player2.height > windowHeight) {
-      player2.yPos = windowHeight - player2.height;
-    };
-
-    if (ball.getRect().intersects(player1.getRect()) ||
-        ball.getRect().intersects(player2.getRect())) {
-      ball.xDir *= -1;
-    };
-    if (ball.xPos <= 0) {
-      scoreP1 += 1;
-      ball.xPos = windowWidth / 2;
-    };
-    if (ball.xPos + ball.width >= windowWidth) {
-      scoreP2 += 1;
-      ball.xPos = windowWidth / 2;
-    };
-    ball.update();
-    logger.log(DEBUG, "Ball X Position: " + std::to_string(ball.xPos));
-    logger.log(DEBUG, "Ball Y Position: " + std::to_string(ball.yPos));
-    std::this_thread::sleep_until(frameStart + frameDuration);
-  };
-
+  }
   udpServer.Close();
   logger.log(INFO, "Program exited.");
 
