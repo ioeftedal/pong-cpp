@@ -231,10 +231,11 @@ int main(void) {
       }
       case Lobby:
         // TODO: make this async
-        logger.log(DEBUG, "Entered Lobby");
+        logger.log(DEBUG, "In Lobby");
         if (udp_clients.size() >= 2) {
           gamestate = Running;
         }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
         break;
       case Winner:
         if (player1Input == 'p' || player2Input == 'p') {
