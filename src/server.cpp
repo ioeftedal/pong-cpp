@@ -22,6 +22,16 @@ char player2Input = '\0';
 
 enum GameState { Running, Lobby, Winner };
 
+struct Information {
+  int player1YPos;
+  int player2YPos;
+  int scoreP1;
+  int scoreP2;
+  int ballXPos;
+  int ballYPos;
+  GameState gamestate;
+};
+
 struct Client {
   std::string ipv4;
   int port;
@@ -142,10 +152,13 @@ int main(void) {
                          std::string(message, length) + "(" +
                          std::to_string(length) + ")");
 
-    // TODO: send back more information.
-    // A struct?
-    // need to send player positions, scores, ball position and gamestate
-    udpServer.SendTo(message, length, ipv4, port);
+    Information info{
+        player1.yPos, player2.yPos, scoreP1,   scoreP2,
+        ball.xPos,    ball.yPos,    gamestate,
+    };
+
+    udpServer.SendTo(reinterpret_cast<const char*>(&info), sizeof(info), ipv4,
+                     port);
   };
 
   // Bind the server to a port.
