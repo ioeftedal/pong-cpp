@@ -79,8 +79,6 @@ struct Ball {
 };
 
 int main(void) {
-  GameState gamestate = GameState::Lobby;
-
   logger.log(INFO, "Program started.");
   logger.log(DEBUG, "Window Height: " + std::to_string(windowWidth));
   logger.log(DEBUG, "Window Height: " + std::to_string(windowHeight));
@@ -113,11 +111,13 @@ int main(void) {
   // apply new setting
   tcsetattr(STDIN_FILENO, TCSANOW, &newt);
 
-  char input = getchar();
+  char input = '\0';
 
-  while (gamestate == GameState::Running) {
-    udpSocket.Send(&input, 1);
+  while (true) {
     input = getchar();
+    if (input == 'q')
+      break;
+    udpSocket.Send(&input, 1);
   };
 
   // restore terminal settings

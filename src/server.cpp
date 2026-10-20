@@ -193,6 +193,8 @@ int main(void) {
         if (player2Input == 'd') {
           player2.yPos += player1.speed;
         };
+        player1Input = '\0';
+        player2Input = '\0';
         // lock player at top and bottom of screen
         if (player1.yPos < 0) {
           player1.yPos = 0;
