@@ -1,7 +1,7 @@
 #include <chrono>
 #include <thread>
 #include <vector>
-#include "../logger.h"
+#include "logger.h"
 #include "udpserver.hpp"
 
 Logger logger("logfile.txt", DEBUG);
