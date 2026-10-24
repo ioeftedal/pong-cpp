@@ -1,100 +1,23 @@
 #include <chrono>
 #include <thread>
 #include <vector>
+
+#include "common.h"
 #include "logger.h"
 #include "udpserver.hpp"
 
 Logger logger("logfile.txt", DEBUG);
-
-const int windowWidth = 800;
-const int windowHeight = 600;
-
-constexpr int margin = 40;
-constexpr int paddleWidth = 20;
-constexpr int paddleHeight = 50;
-constexpr int ballSize = 10;
-
-int scoreP1 = 0;
-int scoreP2 = 0;
-
-char player1Input = '\0';
-char player2Input = '\0';
-
-enum GameState { Running, Lobby, Winner };
-
-struct Information {
-  int player1YPos;
-  int player2YPos;
-  int scoreP1;
-  int scoreP2;
-  int ballXPos;
-  int ballYPos;
-  GameState gamestate;
-};
 
 struct Client {
   std::string ipv4;
   int port;
 };
 
-struct Rect {
-  int x;
-  int y;
-  int width;
-  int height;
+int scoreP1 = 0;
+int scoreP2 = 0;
 
-  bool intersects(const Rect& other) {
-    return x < other.x + other.width && x + width > other.x &&
-           y < other.y + other.height && y + height > other.y;
-  };
-};
-
-struct Player {
-  int xPos;
-  int yPos;
-  int width;
-  int height;
-  int speed = 10;
-
-  Rect getRect() {
-    return {
-        xPos,
-        yPos,
-        width,
-        height,
-    };
-  };
-};
-
-struct Ball {
-  int xPos;
-  int yPos;
-  int xDir;
-  int yDir;
-  int width;
-  int height;
-  int speed = 3;
-
-  void update() {
-    if (yPos < 0) {
-      yDir *= -1;
-    };
-    if (yPos + height > windowHeight) {
-      yDir *= -1;
-    };
-    yPos += yDir * speed;
-    xPos += xDir * speed;
-  };
-
-  Rect getRect() {
-    return {
-        xPos,
-        yPos,
-        width,
-        height,
-    };
-  };
-};
+char player1Input = '\0';
+char player2Input = '\0';
 
 int main(void) {
   logger.log(INFO, "Program started.");
