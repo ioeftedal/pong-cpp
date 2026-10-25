@@ -1,103 +1,25 @@
+#include "common.h"
 #include "logger.h"
 #include "raylib.h"
 
+#include <cstring>
 #include <mutex>
 #include <string>
 #include "udpsocket.hpp"
 
+static void drawPlayer(const Player& p) {
+  DrawRectangle(p.xPos, p.yPos, p.width, p.height, WHITE);
+}
+
+static void drawBall(const Ball& b) {
+  DrawRectangle(b.xPos, b.yPos, b.width, b.height, WHITE);
+}
+
 Logger logger("logfile.txt", DEBUG);
-
-const int windowWidth = 800;
-const int windowHeight = 600;
-
-constexpr int margin = 40;
-constexpr int paddleWidth = 20;
-constexpr int paddleHeight = 50;
-constexpr int ballSize = 10;
-
-const int paddleTop = (windowHeight - paddleHeight) / 2;
-
-int scoreP1 = 0;
-int scoreP2 = 0;
-
-enum GameState { Running, Lobby, Winner };
-
-struct Information {
-  int player1YPos;
-  int player2YPos;
-  int scoreP1;
-  int scoreP2;
-  int ballXPos;
-  int ballYPos;
-  GameState gamestate;
-};
 
 Information latestState{paddleTop,       paddleTop,        0,    0,
                         windowWidth / 2, windowHeight / 2, Lobby};
 std::mutex stateMutex;
-
-struct Rect {
-  int x;
-  int y;
-  int width;
-  int height;
-
-  bool intersects(const Rect& other) {
-    return x < other.x + other.width && x + width > other.x &&
-           y < other.y + other.height && y + height > other.y;
-  };
-};
-
-struct Player {
-  int xPos;
-  int yPos;
-  int width;
-  int height;
-  int speed = 10;
-
-  void draw() const { DrawRectangle(xPos, yPos, width, height, WHITE); };
-
-  Rect getRect() {
-    return {
-        xPos,
-        yPos,
-        width,
-        height,
-    };
-  };
-};
-
-struct Ball {
-  int xPos;
-  int yPos;
-  int xDir;
-  int yDir;
-  int width;
-  int height;
-  int speed = 3;
-
-  void draw() const { DrawRectangle(xPos, yPos, width, height, WHITE); };
-
-  void update() {
-    if (yPos < 0) {
-      yDir *= -1;
-    };
-    if (yPos + height > GetScreenHeight()) {
-      yDir *= -1;
-    };
-    yPos += yDir * speed;
-    xPos += xDir * speed;
-  };
-
-  Rect getRect() {
-    return {
-        xPos,
-        yPos,
-        width,
-        height,
-    };
-  };
-};
 
 static void drawCenteredText(const char* text, int y, int fontSize,
                              Color color) {
@@ -194,15 +116,12 @@ int main(void) {
     ball.xPos = info.ballXPos;
     ball.yPos = info.ballYPos;
 
-    scoreP1 = info.scoreP1;
-    scoreP2 = info.scoreP2;
+    drawPlayer(player1);
+    drawPlayer(player2);
+    drawBall(ball);
 
-    player1.draw();
-    player2.draw();
-    ball.draw();
-
-    const char* scoreTextP1 = TextFormat("Player 1: %d", scoreP1);
-    const char* scoreTextP2 = TextFormat("Player 2: %d", scoreP2);
+    const char* scoreTextP1 = TextFormat("Player 1: %d", info.scoreP1);
+    const char* scoreTextP2 = TextFormat("Player 2: %d", info.scoreP2);
 
     drawCenteredText("PONG", 20, 40, WHITE);
     DrawText(scoreTextP2, margin, 20, 20, WHITE);
